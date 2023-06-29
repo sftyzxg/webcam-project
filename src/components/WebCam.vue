@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, watch } from "vue";
 import * as faceapi from "face-api.js";
 const videoRef = ref<HTMLVideoElement | null>(null);
 let mediaStream: MediaStream | null = null;
@@ -170,7 +170,7 @@ const detectInputImg = async () => {
       resolve();
     });
   });
-
+  console.log("test");
   const rect = inputImg.getBoundingClientRect();
   inputImgPos.value.left = rect.left;
   inputImgPos.value.top = rect.top;
@@ -180,6 +180,31 @@ const detectInputImg = async () => {
     .withFaceExpressions()
     .withAgeAndGender();
   // console.log("Previewdetecction:", detection);
+  previewRef.value = detection;
+
+  previewRef.value.map((data: any, index: number) => {
+    let maxPro = 0;
+    let maxEmo = "";
+    for (const emo in data.expressions) {
+      if (data.expressions[emo] > maxPro) {
+        maxPro = data.expressions[emo];
+        maxEmo = emo;
+      }
+    }
+    previewRef.value[index].finalExpressions = maxEmo;
+  });
+};
+
+const detectResizePage = async () => {
+  const inputImg = document.getElementById("previewImage")!;
+  const rect = inputImg.getBoundingClientRect();
+  inputImgPos.value.left = rect.left;
+  inputImgPos.value.top = rect.top;
+  const canvas = faceapi.createCanvasFromMedia(inputImg as HTMLImageElement);
+  const detection = await faceapi
+    .detectAllFaces(canvas)
+    .withFaceExpressions()
+    .withAgeAndGender();
   previewRef.value = detection;
 
   previewRef.value.map((data: any, index: number) => {
@@ -211,6 +236,9 @@ const handleFileUpload = (event: Event) => {
 
 onMounted(async () => {
   await loadModels();
+  window.addEventListener("resize", () => {
+    detectResizePage();
+  });
 });
 </script>
 
