@@ -52,8 +52,8 @@
     </div>
   </div>
   <!-- <h2 v-for="(data, index) in dataRef" :key="'ageGender' + index">
-    person{{ index }}:Age:{{ parseInt(data.age) }},Gender:{{ data.gender }}
-  </h2> -->
+      person{{ index }}:Age:{{ parseInt(data.age) }},Gender:{{ data.gender }}
+    </h2> -->
   <div>
     <label for="uploadInput" class="upload-button">
       <span>Upload Image</span>
@@ -75,11 +75,11 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 let mediaStream: MediaStream | null = null;
 const ImageUrl = ref();
 const dataRef = ref();
-let timerId: number | null = null;
+let timerId: number | undefined = undefined;
 const previewUrl = ref("");
 const previewRef = ref();
-const videoPos = ref({});
-const inputImgPos = ref({});
+const videoPos = ref({ top: 0, left: 0 });
+const inputImgPos = ref({ top: 0, left: 0 });
 
 const startCamera = async () => {
   try {
@@ -89,7 +89,8 @@ const startCamera = async () => {
     mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream;
-      timerId = setInterval(takeSnapshot, 1000);
+      timerId = window.setInterval(takeSnapshot, 1000);
+      console.log("timer:", timerId);
     }
   } catch (error) {
     console.error("Error starting camera:", error);
@@ -113,7 +114,7 @@ const takeSnapshot = () => {
     const canvas = document.createElement("canvas");
     canvas.width = 320;
     canvas.height = 240;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (ctx) {
       ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height);
       ImageUrl.value = canvas.toDataURL("image/jpeg");
@@ -123,21 +124,26 @@ const takeSnapshot = () => {
 };
 
 const detectFace = async () => {
-  const input = document.getElementById("outImage");
+  const input = document.getElementById("outImage")!;
   const videoElement = document.getElementById("myVideo");
-  const rect = videoElement.getBoundingClientRect();
-  videoPos.value.left = rect.left;
-  videoPos.value.top = rect.top;
-
+  if (videoElement) {
+    const rect = videoElement.getBoundingClientRect();
+    videoPos.value.left = rect.left;
+    videoPos.value.top = rect.top;
+  }
   // console.log(input);
+
+  const canvas = faceapi.createCanvasFromMedia(input as HTMLImageElement);
+
   const detection = await faceapi
-    .detectAllFaces(input)
+    .detectAllFaces(canvas)
     .withFaceExpressions()
     .withAgeAndGender();
   // console.log("detecction:", detection);
   dataRef.value = detection;
 
-  dataRef.value.map((data, index) => {
+  dataRef.value.map((data: any, index: number) => {
+    console.log(data);
     let maxPro = 0;
     let maxEmo = "";
     for (const emo in data.expressions) {
@@ -159,23 +165,25 @@ const loadModels = async () => {
 };
 
 const detectInputImg = async () => {
-  const inputImg = document.getElementById("previewImage");
-  await new Promise((resolve) => {
+  const inputImg = document.getElementById("previewImage")!;
+  await new Promise<void>((resolve) => {
     inputImg.addEventListener("load", () => {
       resolve();
     });
   });
+
   const rect = inputImg.getBoundingClientRect();
   inputImgPos.value.left = rect.left;
   inputImgPos.value.top = rect.top;
+  const canvas = faceapi.createCanvasFromMedia(inputImg as HTMLImageElement);
   const detection = await faceapi
-    .detectAllFaces(inputImg)
+    .detectAllFaces(canvas)
     .withFaceExpressions()
     .withAgeAndGender();
   // console.log("Previewdetecction:", detection);
   previewRef.value = detection;
 
-  previewRef.value.map((data, index) => {
+  previewRef.value.map((data: any, index: number) => {
     let maxPro = 0;
     let maxEmo = "";
     for (const emo in data.expressions) {
@@ -189,7 +197,9 @@ const detectInputImg = async () => {
 };
 
 const handleFileUpload = (event: Event) => {
-  const file = (event.target as HTMLInputElement).files[0];
+  const file =
+    (event.target instanceof HTMLInputElement && event.target.files?.[0]) ||
+    null;
   if (file) {
     const reader = new FileReader();
     reader.onload = (e) => {
