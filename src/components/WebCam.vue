@@ -64,7 +64,7 @@
         @change="handleFileUpload"
       />
     </label>
-    <img id="previewImage" :src="previewUrl" alt="Preview" />
+    <img id="previewImage" :src="previewUrl" />
   </div>
 </template>
 
@@ -90,7 +90,6 @@ const startCamera = async () => {
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream;
       timerId = window.setInterval(takeSnapshot, 1000);
-      console.log("timer:", timerId);
     }
   } catch (error) {
     console.error("Error starting camera:", error);
@@ -143,7 +142,7 @@ const detectFace = async () => {
   dataRef.value = detection;
 
   dataRef.value.map((data: any, index: number) => {
-    console.log(data);
+    // console.log(data);
     let maxPro = 0;
     let maxEmo = "";
     for (const emo in data.expressions) {
